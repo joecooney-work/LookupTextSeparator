@@ -1,5 +1,5 @@
 // src/types/jquery-ui.d.ts
-declare module 'jquery-ui/ui/widgets/autocomplete' {//is this the right location?
+declare module 'jquery-ui/ui/widgets/autocomplete' {
     import * as jquery from 'jquery';
     export = jquery;
 }
@@ -9,9 +9,12 @@ interface JQuery {
     autocomplete(method: string, ...params: any[]): any;
 }
 
-interface AutocompleteUIParams {
-    item: {
-        label: string;
-        value: string;
+interface JQueryUI {
+    AutocompleteOptions: any;
+    AutocompleteUIParams: {
+        item: {
+            label: string;
+            value: string;
+        };
     };
 }
