@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<manifest>
+  <control 
+  namespace="LookupTextSeparator" 
+  constructor="LookupTextSeparator" 
+  version="1.0.1.1" 
+  display-name-key="LookupTextSeparator" 
+  description-key="LookupTextSeparator is a tool for splitting a lookup across a separator and allow users to search across this text." 
+  control-type="standard" >
+    <!--external-service-usage node declares whether this 3rd party PCF control is using external service or not, if yes, this control will be considered as premium and please also add the external domain it is using.
+    If it is not using any external service, please set the enabled="false" and DO NOT add any domain below. The "enabled" will be false by default.
+    Example1:
+      <external-service-usage enabled="true">
+        <domain>www.Microsoft.com</domain>
+      </external-service-usage>
+    Example2:
+      <external-service-usage enabled="false">
+      </external-service-usage>
+    -->
+    <external-service-usage enabled="false">
+      <!--UNCOMMENT TO ADD EXTERNAL DOMAINS
+      <domain></domain>
+      <domain></domain>
+      -->
+    </external-service-usage>
+    <!-- property node identifies a specific, configurable piece of data that the control expects from CDS -->
+     <property name="LookupTextSeparatorValue" 
+    display-name-key="LookupTextSeparatorValue_Display_Key" 
+    description-key="The control the TextSeparator is applied to is displayed and updated here." 
+    of-type="Lookup.Simple" 
+    usage="bound" 
+    required="true"/>
+    <!-- bound Property end!!! -->
+    <property name="LabelValue" 
+    display-name-key="LabelValue_Display_Key" 
+    description-key="This input field serves as a label and will provide the content des. for ex. - English | French" 
+    of-type="SingleLine.Text" 
+    usage="input" 
+    required="true"/>
+    <!-- Property end!!! -->    
+    <property name="LabelDisplay" 
+    display-name-key="LabelDisplay_Display_Key" 
+    description-key="True means the label will display the parsed label value above. ex. - (English)" 
+    of-type="TwoOptions" 
+    usage="input" 
+    required="false"/>
+    <!-- Property end!!! -->    
+    <property name="EditMode" 
+    display-name-key="EditMode_Display_Key" 
+    description-key="True means the field can be updated, false will display the required field without the ability to change the value. (Defaults to true)" 
+    of-type="TwoOptions" 
+    usage="input" 
+    required="false"/>
+    <!-- Property end!!! -->    
+    <property name="LeftContent" 
+    display-name-key="LeftContent_Display_Key" 
+    description-key="True means the field will show left content, false will display the right content. (Defaults to true)" 
+    of-type="TwoOptions" 
+    usage="input" 
+    required="false"/>
+    <!-- Property end!!! -->    
+    <property name="Separator" 
+    display-name-key="Separator_Display_Key" 
+    description-key="The value entered will be used to seperate the string of text stored in the field, left blank the value is (;). (Ex. Your Text Here , Your other Text Here)" 
+    of-type="SingleLine.Text" 
+    usage="input" 
+    required="false"/>
+    <!-- Property end!!! -->    
+    <!--
+      Property node's of-type attribute can be of-type-group attribute.
+      Example:
+      <type-group name="numbers">
+        <type>Whole.None</type>
+        <type>Currency</type>
+        <type>FP</type>
+        <type>Decimal</type>
+      </type-group>
+      <property name="sampleProperty" display-name-key="Property_Display_Key" description-key="Property_Desc_Key" of-type-group="numbers" usage="bound" required="true" />
+    -->
+    <resources>
+      <code path="index.ts" order="1"/>
+      <!-- UNCOMMENT TO ADD MORE RESOURCES
+      <css path="css/LookupContentSeparator.css" order="1" />
+      <resx path="strings/LookupContentSeparator.1033.resx" version="1.0.0" />
+      -->
+    </resources>
+    <feature-usage>
+      <!-- <uses-feature name="Device.captureAudio" required="true" />
+      <uses-feature name="Device.captureImage" required="true" />
+      <uses-feature name="Device.captureVideo" required="true" />
+      <uses-feature name="Device.getBarcodeValue" required="true" />
+      <uses-feature name="Device.getCurrentPosition" required="true" />
+      <uses-feature name="Device.pickFile" required="true" /> -->
+      <uses-feature name="Utility" required="true" />
+      <uses-feature name="WebAPI" required="true" />
+    </feature-usage>
+  </control>
+</manifest>
