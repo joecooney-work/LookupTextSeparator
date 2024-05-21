@@ -3,7 +3,7 @@
   <control 
   namespace="LookupTextSeparator" 
   constructor="LookupTextSeparator" 
-  version="1.0.0" 
+  version="1.0.1" 
   display-name-key="LookupTextSeparator" 
   description-key="LookupTextSeparator is a tool for splitting a lookup across a separator and allow users to search across this text." 
   control-type="standard" >
@@ -63,6 +63,12 @@
     display-name-key="Separator_Display_Key" 
     description-key="The value entered will be used to seperate the string of text stored in the field, left blank the value is (;). (Ex. Your Text Here , Your other Text Here)" 
     of-type="SingleLine.Text" 
+    usage="input" 
+    required="false"/>
+    <property name="SearchLength" 
+    display-name-key="SearchLength_Display_Key" 
+    description-key="The value entered will be used to as the minimum character length to run a search. (defaults to 0)" 
+    of-type="Whole.None" 
     usage="input" 
     required="false"/>
     <!-- Property end!!! -->    

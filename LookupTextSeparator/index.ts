@@ -1,20 +1,17 @@
 import { IInputs, IOutputs } from "./generated/ManifestTypes";
 import * as $ from 'jquery';
-import 'jquery-ui/ui/widgets/autocomplete';//is this right?
+import 'jquery-ui/ui/widgets/autocomplete';
 import { ApiHelper } from './ApiHelper';
-
 
 export class LookupTextSeparator implements ComponentFramework.StandardControl<IInputs, IOutputs> {
 
-    //#region Vars
     // Context Logic
     private container: HTMLDivElement;
     private context: ComponentFramework.Context<IInputs>;
-    private notifyOutputChanged: () => void; // to notify form of control change...
+    private notifyOutputChanged: () => void;
     private state: ComponentFramework.Dictionary;
 
     // Global Vars
-    private subcontainer: HTMLDivElement;
     private apiHelper: ApiHelper;
 
     // Field
@@ -22,160 +19,140 @@ export class LookupTextSeparator implements ComponentFramework.StandardControl<I
     private fieldid: string;
     private fieldvalue: string;
 
-    // Label
-    private label: HTMLLabelElement;
-    private lbl_message: string;
-    private showLabel: boolean;
-    private labeltext: string;
-
     // Input
     private input: HTMLInputElement;
-    private inpt_message: string;
-    private showLeft: boolean;
 
     // Manifest
-    private contentSeparatorValue: ComponentFramework.LookupValue[] | undefined;
+    private contentSeparatorValue: { id: string, name: string, entityType: string }[] | undefined;
     private separator: string;
     private editMode: boolean;
-    private searchlength: number;
-    private resultslength: number;
+    private searchlength: number;// = 3; // Example search length, adjust as needed
 
     // Records
-    private records: { left: string, right: string }[];
+    private records: { fullName: string, left: string, right: string, entity: string, id: string }[]; // Array to store parsed records
 
-    //#endregion
-
-    //#region Empty Constructor
-    /**
-     * Empty constructor.
-     */
+    // Constructor
     constructor() {
         this.records = [];
     }
-    //#endregion
 
-    /**
-     * Used to initialize the control instance. Controls can kick off remote server calls and other initialization actions here.
-     * Data-set values are not initialized here, use updateView.
-     * @param context The entire property bag available to control via Context Object; It contains values as set up by the customizer mapped to property names defined in the manifest, as well as utility functions.
-     * @param notifyOutputChanged A callback method to alert the framework that the control has new outputs ready to be retrieved asynchronously.
-     * @param state A piece of data that persists in one session for a single user. Can be set at any point in a controls life cycle by calling 'setControlState' in the Mode interface.
-     * @param container If a control is marked control-type='standard', it will receive an empty div element within which it can render its content.
-     */
+    // Initialize the control instance
     public init(context: ComponentFramework.Context<IInputs>, notifyOutputChanged: () => void, state: ComponentFramework.Dictionary, container: HTMLDivElement): void {
-        //#region - control initialization code 
+        console.log('Initializing control');
         this.context = context;
         this.notifyOutputChanged = notifyOutputChanged;
         this.state = state;
         this.container = container;
-        //#endregion 
-        
-        // Get the root URL of the CE instance
-        const ceInstanceUrl = (context as any).page.getClientUrl() || "https://org1ff1f21c.crm.dynamics.com/";
-
-        // Initialize ApiHelper with the dynamic URL
-        this.apiHelper = new ApiHelper(ceInstanceUrl);
-
+        this.apiHelper = new ApiHelper((context as any).page.getClientUrl());
         this.loadData();
         this.loadForm();
     }
 
     // Load manifest data values
     private loadData(): void {
-        //controls
-        this.showLeft = this.context.parameters.LeftContent.raw;
+        console.log('Loading data');
         this.editMode = this.context.parameters.EditMode.raw;
-        //separator
         this.separator = this.context.parameters.Separator.raw || ",";
-        this.contentSeparatorValue = this.context.parameters.LookupTextSeparatorValue.raw;
-        
-        //field
-        this.fieldentity = this.contentSeparatorValue[0].entityType || "";
-        this.fieldid = this.contentSeparatorValue[0].id || "";
-        this.fieldvalue = this.contentSeparatorValue[0].name || "";
-        //ui
-        this.labeltext = this.context.parameters.LabelValue.raw || "";
-        this.showLabel = this.context.parameters.LabelDisplay.raw || false;
+        this.contentSeparatorValue = this.context.parameters.LookupTextSeparatorValue.raw as { id: string, name: string, entityType: string }[];
+
+        if (this.contentSeparatorValue && this.contentSeparatorValue.length > 0) {
+            this.fieldentity = this.contentSeparatorValue[0].entityType || "";
+            this.fieldid = this.contentSeparatorValue[0].id || "";
+            this.fieldvalue = this.contentSeparatorValue[0].name || "";
+        } else {
+            this.fieldentity = "";
+            this.fieldid = "";
+            this.fieldvalue = "";
+        }
+        console.log('Loaded data:', {
+            editMode: this.editMode,
+            separator: this.separator,
+            contentSeparatorValue: this.contentSeparatorValue,
+            fieldentity: this.fieldentity,
+            fieldid: this.fieldid,
+            fieldvalue: this.fieldvalue
+        });
     }
 
     // Load HTML control values and set input HTML to the string
     private loadForm(): void {
-        this.createContainer();
-        this.createLabel();
-        this.createInput();
-        this.setAutoComplete();
-        this.setFormLoadValue();
-    }
-
-    private createContainer(): void {
-        this.subcontainer = this.getElement("div", "mycontainer", "mycontainer") as HTMLDivElement;
-        this.container.appendChild(this.subcontainer);
-    }
-
-    private createLabel(): void {
-        try {
-            this.label = this.getElement("label", "label", "mylabel") as HTMLLabelElement;
-            const message = this.showLeft ? this.labeltext.split(this.separator)[0] : this.labeltext.split(this.separator)[1];
-            this.label.innerText = "(" + message.trim() + ")";
-            if (this.showLabel) {
-                this.container.appendChild(this.label);
-            }
-        } catch (error) {
-            alert(error);
-        }
-    }
-
-    private createInput(): void {
+        console.log('Loading form');
         this.input = this.getElement("input", "Input", "myinput") as HTMLInputElement;
         this.input.disabled = !this.editMode;
         this.container.appendChild(this.input);
+
+        // Attach oninput event to the input
+        this.input.oninput = () => this.onInputChange();
+        this.setFormLoadValue();
+        this.setAutoComplete();        
+    }
+
+    private onInputChange(): void {
+        console.log('Input changed:', this.input.value);
+        const searchTerm = this.input.value;
+        if (searchTerm.length >= this.searchlength) {
+            console.log('Making API call with search term:', searchTerm);
+            this.apiHelper.fetchRecords(searchTerm).then((data: any) => {
+                console.log('API call returned data:', data);
+                // Ensure data is in the correct format
+                const formattedData = data.map((item: any) => ({
+                    id: item.id,
+                    jc_name: item.jc_name,
+                    entity: item.entity
+                }));
+
+                this.records = this.parseRecords(formattedData);
+                console.log('Parsed records:', this.records);
+                $(this.input).autocomplete("option", "source", this.records.map(record => ({
+                    label: record.right,
+                    value: record.id
+                })));
+            }).catch(error => {
+                console.error('API call failed:', error);
+            });
+        }
     }
 
     private setAutoComplete(): void {
-        const _searchlength = this.searchlength;
+        console.log('Setting up autocomplete');
         $(this.input).autocomplete({
-            source: (request: { term: string }, response: (results: string[]) => void) => {
-                if (request.term.length < _searchlength) return;
-                this.apiHelper.fetchRecords(request.term).then(data => {
-                    const parsedRecords = this.parseRecords(data);
-                    this.records = parsedRecords; // Store records
-                    this.updateAutocomplete(parsedRecords, request.term, response);
-                });
-            },
-            select: (event: Event, ui: any) => {//any? its the only thing that worked
+            source: [],
+            select: (event: Event, ui: any) => {
                 if (ui.item) {
+                    console.log('Autocomplete item selected:', ui.item);
                     this.setValue(ui.item.value);
                 }
             }
-        } as JQueryUI.AutocompleteOptions);//check this
-    }
-
-    // Parse records
-    private parseRecords(records: { name: string }[]): { left: string, right: string }[] {
-        return records.map(record => {
-            const [left, right] = record.name.split(this.separator);
-            return { left, right };
         });
     }
 
-    // Update autocomplete with fetched records
-    private updateAutocomplete(records: { left: string, right: string }[], term: string, response: (results: string[]) => void): void {
-        const displayRecords = this.showLeft ? records.map(r => r.left) : records.map(r => r.right);
-        const filteredRecords = $.ui.autocomplete.filter(displayRecords, term);
-        response(filteredRecords);
+    // Parse records to get an array of objects with required properties
+    private parseRecords(records: { id: string, jc_name: string, entity: string }[]): { fullName: string, left: string, right: string, entity: string, id: string }[] {
+        console.log('Parsing records:', records);
+        return records.map(record => {
+            const [left, right] = record.jc_name.split(this.separator);
+            return {
+                fullName: record.jc_name,
+                left: left.trim(),
+                right: right.trim(),
+                entity: record.entity,
+                id: record.id
+            };
+        });
     }
 
     // Set the selected value to the lookup field
-    private setValue(selectedValue: string): void {
-        const foundRecord = this.records.find(record =>
-            this.showLeft ? record.left === selectedValue : record.right === selectedValue
-        );
+    private setValue(selectedId: string): void {
+        console.log('Setting value for selected ID:', selectedId);
+        const foundRecord = this.records.find(record => record.id === selectedId);
         if (foundRecord) {
-            this.contentSeparatorValue?.push({
-                id: "00000000-0000-0000-0000-000000000000", // replace with actual id if available
-                name: `${foundRecord.left}${this.separator}${foundRecord.right}`,
-                entityType: this.fieldentity
-            });
+            console.log('Found record:', foundRecord);
+            this.contentSeparatorValue = [{
+                id: foundRecord.id,
+                name: foundRecord.fullName,
+                entityType: foundRecord.entity
+            }];
+            console.log('Assigned contentSeparatorValue:', this.contentSeparatorValue);
             this.notifyOutputChanged();
         }
     }
@@ -189,40 +166,36 @@ export class LookupTextSeparator implements ComponentFramework.StandardControl<I
 
     // Set the control value to the input for the content separator
     private setFormLoadValue(): void {
+        console.log('Setting form load value');
         try {
             const content = this.fieldvalue.split(this.separator);
-            if (content.length < 2) return;
-            this.input.value = this.showLeft ? content[0].trim() : content[1].trim();
+            if (content.length > 0) {
+                this.input.value = content[0].trim();
+            }
         } catch (error) {
             alert("Please contact support, the following error occurred: ERROR:" + error);
         }
     }
 
-    /**
-     * Called when any value in the property bag has changed. This includes field values, data-sets, global values such as container height and width, offline status, control metadata values such as label, visible, etc.
-     * @param context The entire property bag available to control via Context Object; It contains values as set up by the customizer mapped to names defined in the manifest, as well as utility functions
-     */
+    // Called when any value in the property bag has changed
     public updateView(context: ComponentFramework.Context<IInputs>): void {
+        console.log('Updating view');
         this.context = context;
         this.loadData();
         this.setFormLoadValue();
     }
 
-    /**
-     * It is called by the framework prior to a control receiving new data.
-     * @returns an object based on nomenclature defined in manifest, expecting object[s] for property marked as "bound" or "output"
-     */
+    // Returns an object based on nomenclature defined in manifest
     public getOutputs(): IOutputs {
+        console.log('Getting outputs');
         return {
             LookupTextSeparatorValue: this.contentSeparatorValue
         };
     }
 
-    /**
-     * Called when the control is to be removed from the DOM tree. Controls should use this call for cleanup.
-     * i.e. cancelling any pending remote calls, removing listeners, etc.
-     */
+    // Called when the control is to be removed from the DOM tree
     public destroy(): void {
+        console.log('Destroying control');
         // Add code to cleanup control if necessary
     }
 }
