@@ -4,5 +4,5 @@
         "typeRoots": ["node_modules/@types"],
         "types": ["powerapps-component-framework", "jquery", "jqueryui"]
     },
-    "include": ["LookupTextSeparator/src/jquery-ui.d.ts"]
+    "include": ["LookupTextSeparator/src/jquery-ui.d.ts", "src/**/*", "index.ts"]
 }
