@@ -3,7 +3,7 @@
   <control 
   namespace="LookupTextSeparator" 
   constructor="LookupTextSeparator" 
-  version="1.0.110" 
+  version="1.0.1210" 
   display-name-key="LookupTextSeparator" 
   description-key="LookupTextSeparator is a tool for splitting a lookup across a separator and allow users to search across this text." 
   control-type="standard" >

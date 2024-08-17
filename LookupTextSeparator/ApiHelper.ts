@@ -10,6 +10,7 @@ export class ApiHelper {
     private url: string;
     private _context: ComponentFramework.Context<IInputs>;
     public primaryNameAttirbute: string;
+    public primaryIdAttribute: string;
     private entityName: string;
     constructor(context: ComponentFramework.Context<IInputs>, tableName: string) {
         this.url = window.location.href ? window.location.href.split("?")[0] : "";
@@ -21,7 +22,7 @@ export class ApiHelper {
 
     public async getRecordsByAttribute(entityName: string, attributeName: string, value: string): Promise<ComponentFramework.WebApi.RetrieveMultipleResponse> {
         try {
-            const query = `?$select=name,${attributeName}&$filter=${attributeName} eq '${value}'`;
+            const query = `?$select=${attributeName}&$filter=contains(${attributeName}, '${value}')`;
             const records = await this._context.webAPI.retrieveMultipleRecords(entityName, query);
             return records;
         } catch (error) {
@@ -29,22 +30,27 @@ export class ApiHelper {
             throw error;
         }
     }
+    
+
     public getTableMetadata(): void {
-        const filter = `LogicalName eq '${this.entityName}'`;
-        this._context.webAPI.retrieveMultipleRecords("EntityDefinitions", `?$filter=${filter}&$select=PrimaryNameAttribute`).then(
+        this._context.utils.getEntityMetadata(this.entityName, ["PrimaryIdAttribute", "PrimaryNameAttribute"]).then(
             (response) => {
-                if (response.entities.length > 0) {
-                    const primaryNameAttribute = response.entities[0].PrimaryNameAttribute;
-                    console.log("Primary Name Attribute:", primaryNameAttribute);
-                    this.primaryNameAttirbute = response.entities[0].PrimaryNameAttribute;
-                    // You can return this value or use it as needed
-                }
+                if (response.PrimaryNameAttribute) 
+                    this.primaryNameAttirbute = response.PrimaryNameAttribute;
+                if (response.PrimaryNameAttribute) 
+                    this.primaryIdAttribute = response.PrimaryIdAttribute;
+                //testing
+                console.log("Primary Name Attribute:", this.primaryNameAttirbute);
+                console.log("Primary Id Attribute:", this.primaryIdAttribute);                                    
             },
             (error) => {
                 console.error("Error retrieving EntityDefinitions:", error);
             }
         );
     }
+
+
+
     private alertMissingURL(){
         alert("Error: Unable to locate window URL or no Table Name was set, please refresh the browser. If the problem persists contact support.");
     }

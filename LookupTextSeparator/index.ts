@@ -48,7 +48,7 @@ export class LookupTextSeparator implements ComponentFramework.StandardControl<I
         this.context = context;
         this.notifyOutputChanged = notifyOutputChanged;
         this.state = state;
-        this.container = container;        
+        this.container = container; 
         this.loadData();
         this.loadForm();
     }
@@ -56,6 +56,7 @@ export class LookupTextSeparator implements ComponentFramework.StandardControl<I
     // Load manifest data values
     private loadData(): void {
         console.log('LTS | Loading data');
+        //get Manifest Data
         this.editMode = this.context.parameters.EditMode.raw;
         this.separator = this.context.parameters.Separator.raw || ",";
         this.contentSeparatorValue = this.context.parameters.LookupTextSeparatorValue.raw as { id: string, name: string, entityType: string }[];
@@ -66,20 +67,22 @@ export class LookupTextSeparator implements ComponentFramework.StandardControl<I
         this.fieldentity = this.contentSeparatorValue[0].entityType || "";
         this.fieldid = this.contentSeparatorValue[0].id || "";
         this.fieldvalue = this.contentSeparatorValue[0].name || "";
-        if(!this.fieldentity) return;
+
+        if(!this.fieldentity) return;//no field, uh oh!
+        //get metadata for current field
         this.apiHelper = new ApiHelper(this.context, this.fieldentity);
-        this.apiHelper.getTableMetadata();
-        
-        
+        this.apiHelper.getTableMetadata(); 
         console.log('LTS | Loaded data:', {
             editMode: this.editMode,
             separator: this.separator,
             contentSeparatorValue: this.contentSeparatorValue,
             fieldentity: this.fieldentity,
             fieldid: this.fieldid,
-            fieldvalue: this.fieldvalue//,
-            //entityData: this.entities ? this.entities[0] : ""
+            fieldvalue: this.fieldvalue,
+            primarynameattribute: this.apiHelper.primaryNameAttirbute
         });
+        //testing
+        //setTimeout(() => console.log(this.apiHelper.primaryNameAttirbute), 5000);
     }
 
     // Load HTML control values and set input HTML to the string
@@ -100,19 +103,21 @@ export class LookupTextSeparator implements ComponentFramework.StandardControl<I
         const searchTerm = this.input.value;
         if (searchTerm.length >= this.searchlength) {
             console.log('LTS | Making API call with search term:', searchTerm);
-            this.apiHelper.getRecordsByAttribute(this.fieldentity, this.fieldentity, searchTerm).then((data: any) => {
-                console.log('LTS | API call returned data:', data);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            this.apiHelper.getRecordsByAttribute(this.fieldentity, this.apiHelper.primaryNameAttirbute, searchTerm).then((data: any) => {
+                console.log('LTS | API call returned data:', data.entities);
                 // Ensure data is in the correct format               
-                const formattedData = data.map((item: any) => ({
-                    id: item.id,
-                    jc_name: item.name,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const formattedData = data.entities.map((item: any) => ({
+                    id: item[this.apiHelper.primaryIdAttribute],
+                    name: item[this.apiHelper.primaryNameAttirbute],
                     entity: item.entity
                 }));
 
                 this.records = this.parseRecords(formattedData);
                 console.log('LTS | Parsed records:', this.records);
                 $(this.input).autocomplete("option", "source", this.records.map(record => ({
-                    label: this.showLeft? record.left : record.right, //|| record.left, need to show left side too
+                    label: this.showLeft? record.left : record.right, 
                     value: record.id
                 })));
             }).catch(error => { 
@@ -125,6 +130,7 @@ export class LookupTextSeparator implements ComponentFramework.StandardControl<I
         console.log('LTS | Setting up autocomplete');
         $(this.input).autocomplete({
             source: [],
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             select: (event: Event, ui: any) => {
                 if (ui.item) {
                     console.log('LTS | Autocomplete item selected:', ui.item);
@@ -135,12 +141,12 @@ export class LookupTextSeparator implements ComponentFramework.StandardControl<I
     }
 
     // Parse records to get an array of objects with required properties
-    private parseRecords(records: { id: string, jc_name: string, entity: string }[]): { fullName: string, left: string, right: string, entity: string, id: string }[] {
+    private parseRecords(records: { id: string, name: string, entity: string }[]): { fullName: string, left: string, right: string, entity: string, id: string }[] {
         console.log('LTS | Parsing records:', records);
         return records.map(record => {
-            const [left, right] = record.jc_name.split(this.separator);
+            const [left, right] = record.name.split(this.separator);
             return {
-                fullName: record.jc_name,
+                fullName: record.name,
                 left: left.trim(),
                 right: right.trim(),
                 entity: record.entity,
