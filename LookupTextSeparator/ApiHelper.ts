@@ -11,12 +11,12 @@ export class ApiHelper {
     private _context: ComponentFramework.Context<IInputs>;
     public primaryNameAttirbute: string;
     public primaryIdAttribute: string;
-    private entityName: string;
+    public primaryTableName: string;
     constructor(context: ComponentFramework.Context<IInputs>, tableName: string) {
         this.url = window.location.href ? window.location.href.split("?")[0] : "";
         this._context = context;
-        this.entityName = tableName;
-        if(this.url == "" || this.entityName == "") 
+        this.primaryTableName = tableName;
+        if(this.url == "" || this.primaryTableName == "") 
             this.alertMissingURL();
     }
 
@@ -33,7 +33,7 @@ export class ApiHelper {
     
 
     public getTableMetadata(): void {
-        this._context.utils.getEntityMetadata(this.entityName, ["PrimaryIdAttribute", "PrimaryNameAttribute"]).then(
+        this._context.utils.getEntityMetadata(this.primaryTableName, ["PrimaryIdAttribute", "PrimaryNameAttribute"]).then(
             (response) => {
                 if (response.PrimaryNameAttribute) 
                     this.primaryNameAttirbute = response.PrimaryNameAttribute;

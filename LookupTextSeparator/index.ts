@@ -108,12 +108,7 @@ export class LookupTextSeparator implements ComponentFramework.StandardControl<I
                 console.log('LTS | API call returned data:', data.entities);
                 // Ensure data is in the correct format               
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const formattedData = data.entities.map((item: any) => ({
-                    id: item[this.apiHelper.primaryIdAttribute],
-                    name: item[this.apiHelper.primaryNameAttirbute],
-                    entity: item.entity
-                }));
-
+                const formattedData = data.entities.map((item: any) => this.parseEntities(item));
                 this.records = this.parseRecords(formattedData);
                 console.log('LTS | Parsed records:', this.records);
                 $(this.input).autocomplete("option", "source", this.records.map(record => ({
@@ -123,6 +118,13 @@ export class LookupTextSeparator implements ComponentFramework.StandardControl<I
             }).catch(error => { 
                 console.error('LTS | API call failed:', error);
             });
+        }
+    }
+    private parseEntities(item: any): { id: string, name: string, entity: string }{
+        return {
+            id: item[this.apiHelper.primaryIdAttribute],//this.apiHelper.primaryIdAttribute],
+            name: item[this.apiHelper.primaryNameAttirbute],
+            entity: this.apiHelper.primaryTableName
         }
     }
 
