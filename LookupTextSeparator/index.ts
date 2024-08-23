@@ -23,9 +23,6 @@ export class LookupTextSeparator implements ComponentFramework.StandardControl<I
     // Input
     private input: HTMLInputElement;
 
-    //Results
-    private entities: Promise<ComponentFramework.WebApi.Entity>;
-
     // Manifest
     private contentSeparatorValue: ComponentFramework.LookupValue[];//ComponentFramework.PropertyTypes.LookupProperty; // { id: string, name: string, entityType: string }[] | undefined;
     private separator: string;
@@ -37,10 +34,12 @@ export class LookupTextSeparator implements ComponentFramework.StandardControl<I
     
     // Records
     private records: ComponentFramework.WebApi.Entity; //{ fullName: string, left: string, right: string, entity: string, id: string }[]; // Array to store parsed records
+    public selections: ComponentFramework.LookupValue[];
 
     // Constructor
     constructor() {
         this.records = [];
+        this.selections = [];
     }
 
     // Initialize the control instance
@@ -108,72 +107,59 @@ export class LookupTextSeparator implements ComponentFramework.StandardControl<I
         this.suggestionsContainer.innerHTML = "";
         if (searchTerm.length >= this.searchlength) {
             console.log('LTS | Making API call with search term:', searchTerm);
-            this.apiHelper.getRecordsByAttribute(this.fieldentity, this.apiHelper.primaryNameAttirbute, searchTerm).then((data: ComponentFramework.WebApi.RetrieveMultipleResponse) => {
+            this.apiHelper.getRecordsByAttribute(this.fieldentity, this.apiHelper.primaryNameAttirbute, searchTerm)
+            .then((data: ComponentFramework.WebApi.RetrieveMultipleResponse) => {
                 console.log('LTS | API call returned data: ', data.entities);
-                this.records = data.entities.map((item: ComponentFramework.WebApi.Entity) => this.parseEntity(item)); //this.parseRecords(formattedData);
+                this.records = data.entities;               
                 console.log('LTS | Parsed API records: ', this.records);
                 this.setAutoComplete();
-                //this.processRecords();                
-                //$(this.input).autocomplete("option", "source", this.records.map(record => ({ label: this.showLeft? record.left : record.right, value: record.id })));
             }).catch(error => { 
                 console.error('LTS | API call failed:', error);
             });
         }
     }
-    // private processRecords() {
-    //     this.records.forEach((record: ComponentFramework.WebApi.Entity) => {
-    //         console.log('LTS | Processing searched records: ', this.records);
-    //         const suggestion = document.createElement("div");
-    //         suggestion.addEventListener("click", () => {
-    //             this.input.value = record.id;
-    //             this.suggestionsContainer.innerHTML = this.showLeft ? record.left : record.right;
-    //             this.setValue(this.input.value, true);                
-    //             this.notifyOutputChanged();
-    //         });
-    //         console.log('LTS | Parsed records: ', this.records);
-    //         this.suggestionsContainer.appendChild(suggestion);
-    //         });
-    // }
-    private parseEntity(item: ComponentFramework.WebApi.Entity): ComponentFramework.WebApi.Entity{
-        return {
-            id: item[this.apiHelper.primaryIdAttribute],//this.apiHelper.primaryIdAttribute],
-            name: item[this.apiHelper.primaryNameAttirbute],
-            entity: this.apiHelper.primaryTableName
-        }
-    }
-
     private setAutoComplete(): void {
         console.log('LTS | Setting up autocomplete');
+        const names: string[] = this.records ? this.records.map((record: ComponentFramework.WebApi.Entity)  => this.parseEntity(record) ) : [];
+        this.selections = this.records.map((record: ComponentFramework.WebApi.Entity)  => ({ value: record[this.apiHelper.primaryIdAttribute], label: record[this.apiHelper.primaryNameAttirbute] }));
         $(this.input).autocomplete({
-            source: this.records ? this.records : [],
+            source: names,
             select: (event: Event, ui: JQueryUI.AutocompleteUIParams) => {
                 if (ui.item) {
                     console.log('LTS | Autocomplete item selected:', ui.item);
-                    this.setValue(ui.item.value, true);
+                    this.setValue(ui.item.value, ui.item.value !== "");                    
                 }
             }
         });
     }
 
-    // Parse records to get an array of objects with required properties
-    // private parseRecords(records: { id: string, name: string, entity: string }[]): { fullName: string, left: string, right: string, entity: string, id: string }[] {
-    //     console.log('LTS | Parsing records:', records);
-    //     return records.map(record => {
-    //         const [left, right] = record.name.split(this.separator);
-    //         return {
-    //             fullName: record.name,
-    //             left: left.trim(),
-    //             right: right.trim(),
-    //             entity: record.entity,
-    //             id: record.id
-    //         };
-    //     });
-    // }
-
+    //Parse records to get an array of objects with required properties
+    private parseRecords(records: { id: string, name: string, entity: string }[]): { fullName: string, left: string, right: string, entity: string, id: string }[] {
+        console.log('LTS | Parsing records:', records);
+        return records.map(record => {
+            const [left, right] = record.name.split(this.separator);
+            return {
+                fullName: record.name,
+                left: left.trim(),
+                right: right.trim(),
+                entity: record.entity,
+                id: record.id
+            };
+        });
+    }
+    private parseEntity(item: ComponentFramework.WebApi.Entity): ComponentFramework.WebApi.Entity{
+        const parsedValue = this.showLeft ? 
+        item[this.apiHelper.primaryNameAttirbute].split(this.separator)[0].trim() : 
+        item[this.apiHelper.primaryNameAttirbute].split(this.separator)[1].trim();
+        return ({
+            value: item[this.apiHelper.primaryIdAttribute],
+            label: parsedValue            
+        });
+    }
     // Set the selected suggested value to the lookup field
     private setValue(selectedId: string, notifychange?: boolean): void {
         console.log('LTS | Setting value for selected ID:', selectedId);
-        const foundRecord = this.records.find((record: ComponentFramework.WebApi.Entity) => record.id === selectedId);
+        const foundRecord = this.records.find((record: ComponentFramework.WebApi.Entity) => record[this.apiHelper.primaryIdAttribute] === selectedId);
         if (foundRecord) {
             console.log('LTS | Found record:', foundRecord);
             this.contentSeparatorValue = [{
