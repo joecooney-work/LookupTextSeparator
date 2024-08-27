@@ -7,7 +7,6 @@ export class LookupTextSeparator implements ComponentFramework.StandardControl<I
 
     // Context Logic
     private container: HTMLDivElement;
-    private suggestionsContainer: HTMLDivElement;
     private context: ComponentFramework.Context<IInputs>;
     private notifyOutputChanged: () => void;
     private state: ComponentFramework.Dictionary;
@@ -39,9 +38,9 @@ export class LookupTextSeparator implements ComponentFramework.StandardControl<I
     // Constructor
     constructor() {
         this.records = [];
-        this.selections = [];
+        //this.selections = [];
     }
-
+    
     // Initialize the control instance
     public init(context: ComponentFramework.Context<IInputs>, notifyOutputChanged: () => void, state: ComponentFramework.Dictionary, container: HTMLDivElement): void {
         console.log('LTS | Initializing control');
@@ -49,11 +48,9 @@ export class LookupTextSeparator implements ComponentFramework.StandardControl<I
         this.notifyOutputChanged = notifyOutputChanged;
         this.state = state;
         this.container = container;
-        this.suggestionsContainer = document.createElement("div"); 
         this.loadData();
         this.loadForm();
     }
-
     // Load manifest data values
     private loadData(): void {
         console.log('LTS | Loading data');
@@ -86,25 +83,22 @@ export class LookupTextSeparator implements ComponentFramework.StandardControl<I
             primarynameattribute: this.apiHelper.primaryNameAttirbute
         });
     }
-
     // Load HTML control values and set input HTML to the string
     private loadForm(): void {
         console.log('LTS | Loading form');
         this.input = this.getElement("input", "Input", "myinput") as HTMLInputElement;
         this.input.disabled = !this.editMode;
+
         console.log('LTS | Loading form ' + this.input.innerHTML);
         this.container.appendChild(this.input);
-        console.log('LTS | Loading form: ' + this.suggestionsContainer);
-        this.container.appendChild(this.suggestionsContainer);
+
         // Attach oninput event to the input
-        this.input.oninput = () => this.onInputChange();
+        this.input.onkeyup = () => this.onInputChange();
         this.setFormLoadValue();
     }
-
     private onInputChange(): void {
         console.log('LTS | Input changed:', this.input.value);
         const searchTerm = this.input.value;
-        this.suggestionsContainer.innerHTML = "";
         if (searchTerm.length >= this.searchlength) {
             console.log('LTS | Making API call with search term:', searchTerm);
             this.apiHelper.getRecordsByAttribute(this.fieldentity, this.apiHelper.primaryNameAttirbute, searchTerm)
@@ -120,58 +114,31 @@ export class LookupTextSeparator implements ComponentFramework.StandardControl<I
     }
     private setAutoComplete(): void {
         console.log('LTS | Setting up autocomplete');
-        const names: string[] = this.records ? this.records.map((record: ComponentFramework.WebApi.Entity)  => this.parseEntity(record) ) : [];
-        this.selections = this.records.map((record: ComponentFramework.WebApi.Entity)  => ({ value: record[this.apiHelper.primaryIdAttribute], label: record[this.apiHelper.primaryNameAttirbute] }));
+        if(!this.records || !(this.records.length > 0)) return;
+        const names: string[] = this.records.map((record: ComponentFramework.WebApi.Entity)  => this.parseEntity(record) );
         $(this.input).autocomplete({
             source: names,
             select: (event: Event, ui: JQueryUI.AutocompleteUIParams) => {
                 if (ui.item) {
-                    console.log('LTS | Autocomplete item selected:', ui.item);
-                    this.setValue(ui.item.value, ui.item.value !== "");                    
+                    const selection: ComponentFramework.WebApi.Entity = this.records.filter((record: ComponentFramework.WebApi.Entity) => record[this.apiHelper.primaryIdAttribute] === ui.item.id);
+                    if (!selection) return;
+                    this.contentSeparatorValue[0].id = selection[0][this.apiHelper.primaryIdAttribute];
+                    this.contentSeparatorValue[0].name = selection[0][this.apiHelper.primaryNameAttirbute];
+                    this.contentSeparatorValue[0].entityType = this.fieldentity;
+                    this.notifyOutputChanged();                    
                 }
             }
         });
     }
-
-    //Parse records to get an array of objects with required properties
-    private parseRecords(records: { id: string, name: string, entity: string }[]): { fullName: string, left: string, right: string, entity: string, id: string }[] {
-        console.log('LTS | Parsing records:', records);
-        return records.map(record => {
-            const [left, right] = record.name.split(this.separator);
-            return {
-                fullName: record.name,
-                left: left.trim(),
-                right: right.trim(),
-                entity: record.entity,
-                id: record.id
-            };
-        });
-    }
     private parseEntity(item: ComponentFramework.WebApi.Entity): ComponentFramework.WebApi.Entity{
-        const parsedValue = this.showLeft ? 
+        const parsedLabel = this.showLeft ? 
         item[this.apiHelper.primaryNameAttirbute].split(this.separator)[0].trim() : 
         item[this.apiHelper.primaryNameAttirbute].split(this.separator)[1].trim();
         return ({
-            value: item[this.apiHelper.primaryIdAttribute],
-            label: parsedValue            
+            label: parsedLabel,
+            value: parsedLabel,
+            id: item[this.apiHelper.primaryIdAttribute]                                   
         });
-    }
-    // Set the selected suggested value to the lookup field
-    private setValue(selectedId: string, notifychange?: boolean): void {
-        console.log('LTS | Setting value for selected ID:', selectedId);
-        const foundRecord = this.records.find((record: ComponentFramework.WebApi.Entity) => record[this.apiHelper.primaryIdAttribute] === selectedId);
-        if (foundRecord) {
-            console.log('LTS | Found record:', foundRecord);
-            this.contentSeparatorValue = [{
-                id: foundRecord.id,
-                name: foundRecord.fullName,
-                entityType: foundRecord.entity
-            }];
-            console.log('LTS | Assigned contentSeparatorValue:', this.contentSeparatorValue);
-            if(notifychange)
-                this.notifyOutputChanged();
-        } else 
-            console.log('LTS | Unable to set value for selected ID:', selectedId);
     }
     private getElement(type: string, id: string, className: string): HTMLElement {
         const obj = document.createElement(type);
@@ -179,7 +146,6 @@ export class LookupTextSeparator implements ComponentFramework.StandardControl<I
         obj.className = className;
         return obj;
     }
-    
     // Set the control value to the input for the content separator
     private setFormLoadValue(): void {
         console.log('LTS | Setting form load value');
@@ -193,15 +159,13 @@ export class LookupTextSeparator implements ComponentFramework.StandardControl<I
             alert("LTS | Please contact support, the following error occurred: ERROR:" + error);
         }
     }
-
     // Called when any value in the property bag has changed
     public updateView(context: ComponentFramework.Context<IInputs>): void {
         console.log('LTS | Updating view');
         this.context = context;
-        //this.loadData();
-        //this.setFormLoadValue();
-    }
 
+        
+    }
     // Returns an object based on nomenclature defined in manifest
     public getOutputs(): IOutputs {
         console.log('LTS | Getting outputs');
@@ -209,7 +173,6 @@ export class LookupTextSeparator implements ComponentFramework.StandardControl<I
             LookupTextSeparatorValue: this.contentSeparatorValue
         };
     }
-
     // Called when the control is to be removed from the DOM tree
     public destroy(): void {
         console.log('LTS | Destroying control');
